@@ -35,7 +35,7 @@ const loadOrders = () => {
 }
 
 const saveOrders = () => {
-  fs.writeFileSync(ordersFile, JSON.stringify(orders, null, 2))
+  fs.writeFileSync(ordersFile, JSON.stringify(orders, null, 2), 'utf8')
 }
 
 const loadAftersales = () => {
@@ -46,7 +46,7 @@ const loadAftersales = () => {
 }
 
 const saveAftersales = () => {
-  fs.writeFileSync(aftersalesFile, JSON.stringify(aftersales, null, 2))
+  fs.writeFileSync(aftersalesFile, JSON.stringify(aftersales, null, 2), 'utf8')
 }
 
 const insertSampleData = () => {
@@ -138,9 +138,10 @@ export const getDatabase = () => {
             progress: params[10],
             remainingTime: params[11],
             createTime: params[12],
-            finishTime: params[13],
-            paymentMethod: params[14],
-            failReason: params[15]
+            paymentMethod: params[13],
+            tradeNo: params[14],
+            finishTime: null,
+            failReason: null
           }
           orders.unshift(newOrder)
           saveOrders()
@@ -149,7 +150,16 @@ export const getDatabase = () => {
           const orderNumber = params[params.length - 1]
           const index = orders.findIndex(o => o.orderNumber === orderNumber)
           if (index !== -1) {
-            orders[index] = { ...orders[index], ...params }
+            const setClause = sql.match(/SET\s+(.+?)\s+WHERE/i)?.[1]
+            if (setClause) {
+              const assignments = setClause.split(',').map(a => a.trim())
+              assignments.forEach((assignment, i) => {
+                const [field, value] = assignment.split('=').map(s => s.trim())
+                if (params[i] !== undefined) {
+                  orders[index][field] = params[i]
+                }
+              })
+            }
             saveOrders()
             return Promise.resolve({ changes: 1 })
           }

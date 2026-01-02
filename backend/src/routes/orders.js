@@ -107,7 +107,7 @@ router.put('/:id/status', async (req, res) => {
     const { status } = req.body
 
     if (!status) {
-      return res.status(400).json({ error: 'Status is required' })
+      return res.status(400).json({ success: false, error: 'Status is required' })
     }
 
     const db = getDatabase()
@@ -118,14 +118,14 @@ router.put('/:id/status', async (req, res) => {
     )
 
     if (result.changes === 0) {
-      return res.status(404).json({ error: 'Order not found' })
+      return res.status(404).json({ success: false, error: 'Order not found' })
     }
 
     const updatedOrder = await db.orders.get('SELECT * FROM orders WHERE orderNumber = ?', id)
-    res.json(updatedOrder)
+    res.json({ success: true, order: updatedOrder })
   } catch (error) {
     console.error('Error updating order status:', error)
-    res.status(500).json({ error: 'Failed to update order status' })
+    res.status(500).json({ success: false, error: 'Failed to update order status' })
   }
 })
 
