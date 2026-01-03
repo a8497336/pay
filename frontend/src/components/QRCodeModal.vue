@@ -7,11 +7,11 @@
         <p class="pay-amount">¥{{ payAmount }}</p>
       </div>
       <div class="qr-code-container">
-        <div class="qr-code-wrapper" @click="handleQRCodeClick" @touchstart="handleTouchStart" @touchend="handleTouchEnd">
+        <div class="qr-code-wrapper">
           <canvas ref="qrCanvas" v-show="!qrCodeImage"></canvas>
           <img ref="qrImage" v-show="qrCodeImage" :src="qrCodeImage" alt="支付二维码" class="qr-code-img" />
         </div>
-        <p class="qr-tip">请使用微信扫一扫或长按识别</p>
+        <p class="qr-tip">请使用微信或支付宝扫一扫支付</p>
         <p class="qr-status" v-if="lastStatus">当前状态：{{ getStatusText(lastStatus) }}</p>
       </div>
       <div class="modal-footer">
@@ -53,37 +53,7 @@ const qrCanvas = ref(null)
 const qrImage = ref(null)
 const qrCodeImage = ref('')
 const lastStatus = ref('')
-const touchStartTime = ref(0)
-const touchTimer = ref(null)
 let pollingTimer = null
-
-const handleQRCodeClick = () => {
-  if (props.qrCode) {
-    window.location.href = props.qrCode
-  }
-}
-
-const handleTouchStart = () => {
-  touchStartTime.value = Date.now()
-  
-  touchTimer.value = setTimeout(() => {
-    if (props.qrCode) {
-      window.location.href = props.qrCode
-    }
-  }, 800)
-}
-
-const handleTouchEnd = () => {
-  if (touchTimer.value) {
-    clearTimeout(touchTimer.value)
-    touchTimer.value = null
-  }
-  
-  const touchDuration = Date.now() - touchStartTime.value
-  if (touchDuration < 300 && touchDuration > 0) {
-    handleQRCodeClick()
-  }
-}
 
 const generateQRCode = async () => {
   if (props.qrCode && qrCanvas.value) {
@@ -266,14 +236,6 @@ const handleOutsideClick = () => {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform 0.2s ease;
-}
-
-.qr-code-wrapper:active {
-  transform: scale(0.95);
 }
 
 .qr-code-wrapper canvas {

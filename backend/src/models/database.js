@@ -11,6 +11,8 @@ const aftersalesFile = path.join(dataDir, 'aftersales.json')
 
 let orders = []
 let aftersales = []
+let dbInstance = null
+let isInitialized = false
 
 export const initDatabase = () => {
   if (!fs.existsSync(dataDir)) {
@@ -24,6 +26,7 @@ export const initDatabase = () => {
     insertSampleData()
   }
 
+  isInitialized = true
   return Promise.resolve()
 }
 
@@ -111,7 +114,17 @@ const insertSampleData = () => {
 }
 
 export const getDatabase = () => {
-  return {
+  if (!isInitialized) {
+    loadOrders()
+    loadAftersales()
+    isInitialized = true
+  }
+
+  if (dbInstance) {
+    return dbInstance
+  }
+
+  dbInstance = {
     orders: {
       all: () => Promise.resolve(orders),
       get: (sql, params) => {
@@ -152,9 +165,8 @@ export const getDatabase = () => {
           if (index !== -1) {
             const setClause = sql.match(/SET\s+(.+?)\s+WHERE/i)?.[1]
             if (setClause) {
-              const assignments = setClause.split(',').map(a => a.trim())
-              assignments.forEach((assignment, i) => {
-                const [field, value] = assignment.split('=').map(s => s.trim())
+              const fields = setClause.split(',').map(a => a.trim().split('=')[0].trim())
+              fields.forEach((field, i) => {
                 if (params[i] !== undefined) {
                   orders[index][field] = params[i]
                 }
@@ -210,4 +222,6 @@ export const getDatabase = () => {
       }
     }
   }
+
+  return dbInstance
 }

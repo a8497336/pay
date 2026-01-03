@@ -1,6 +1,6 @@
 import express from 'express'
 import { getDatabase } from '../models/database.js'
-import wechatPayService from '../services/wechatPayService.js'
+import liantuofuPayService from '../services/liantuofuPayService.js'
 import crypto from 'crypto'
 
 const router = express.Router()
@@ -52,12 +52,11 @@ router.post('/', async (req, res) => {
       payAmount,
       faceAmount,
       paymentMethod,
-      openid,
-      subject: '电费充值',
-      body: `充值${faceAmount}元`
+      clientIp: req.ip || req.connection.remoteAddress || '127.0.0.1',
+      orderData: orderInfo
     }
 
-    const paymentResult = await wechatPayService.createPaymentOrder(paymentRequestData)
+    const paymentResult = await liantuofuPayService.createPaymentOrder(paymentRequestData)
 
     if (!paymentResult.success) {
       return res.json({
@@ -69,7 +68,7 @@ router.post('/', async (req, res) => {
     const responseData = {
       success: true,
       orderNumber,
-      tradeNo: paymentResult.prepayId || paymentResult.transactionId || tradeNo,
+      tradeNo: paymentResult.transactionId || tradeNo,
       message: '支付订单创建成功'
     }
 
@@ -77,12 +76,8 @@ router.post('/', async (req, res) => {
       responseData.qrCode = paymentResult.qrCode
     }
 
-    if (paymentResult.payParams) {
-      responseData.jsapiParams = paymentResult.payParams
-    }
-
-    if (paymentResult.h5Url) {
-      responseData.h5Url = paymentResult.h5Url
+    if (paymentResult.payUrl) {
+      responseData.payUrl = paymentResult.payUrl
     }
 
     res.json(responseData)
@@ -114,12 +109,12 @@ router.post('/query', async (req, res) => {
       })
     }
 
-    if (order.paymentMethod === 'wechat' && order.status !== 'completed') {
+    if (order.paymentMethod === 'liantuofu' && order.status !== 'completed') {
       try {
-        const wechatResult = await wechatPayService.queryPaymentStatus(orderNumber)
-        console.log('WeChat Pay query result:', wechatResult)
+        const liantuofuResult = await liantuofuPayService.queryPaymentStatus(orderNumber)
+        console.log('Liantuofu Pay query result:', liantuofuResult)
 
-        if (wechatResult.success && wechatResult.tradeStatus === 'SUCCESS') {
+        if (liantuofuResult.success && liantuofuResult.tradeStatus === 'SUCCESS') {
           await db.orders.run(
             'UPDATE orders SET status = ?, finishTime = ? WHERE orderNumber = ?',
             ['completed', new Date().toISOString(), orderNumber]
@@ -129,7 +124,7 @@ router.post('/query', async (req, res) => {
           order.finishTime = new Date().toISOString()
         }
       } catch (error) {
-        console.error('Error querying WeChat Pay status:', error)
+        console.error('Error querying Liantuofu Pay status:', error)
       }
     }
 
@@ -172,6 +167,79 @@ router.post('/notify', async (req, res) => {
   } catch (error) {
     console.error('Error processing payment notify:', error)
     res.status(500).json({ code: '9999', msg: 'Internal server error' })
+  }
+})
+
+router.post('/liantuofu/notify', async (req, res) => {
+  try {
+    console.log('=== Liantuofu Pay notify ===')
+    console.log('Request headers:', JSON.stringify(req.headers, null, 2))
+    console.log('Request body:', JSON.stringify(req.body, null, 2))
+    console.log('Raw body:', req.body)
+
+    const verifyResult = await liantuofuPayService.verifyNotify(req.body)
+
+    const SKIP_SIGN_VERIFY = process.env.SKIP_SIGN_VERIFY === 'true'
+
+    if (!SKIP_SIGN_VERIFY && !verifyResult.success) {
+      console.error('Liantuofu Pay notify verification failed')
+      console.error('Received sign:', req.body.sign)
+      console.error('Calculated sign:', verifyResult.calculatedSign)
+      console.error('Params for sign:', JSON.stringify(req.body, null, 2))
+       
+      return res.json({ code: -1, msg: 'sign error' })
+    }
+
+    const { outTradeNo, transactionId, totalAmount, tradeStatus, channel } = verifyResult.data || req.body
+
+    const db = getDatabase()
+
+    if (tradeStatus === 'SUCCESS' || tradeStatus === 'TRADE_SUCCESS') {
+      await db.orders.run(
+        'UPDATE orders SET status = ?, finishTime = ?, tradeNo = ? WHERE orderNumber = ?',
+        ['completed', new Date().toISOString(), transactionId, outTradeNo]
+      )
+      console.log(`订单${outTradeNo}支付成功，金额${totalAmount}元`)
+    } else if (tradeStatus === 'FAILED' || tradeStatus === 'TRADE_FAILED') {
+      await db.orders.run(
+        'UPDATE orders SET status = ?, failReason = ? WHERE orderNumber = ?',
+        ['failed', '支付失败', outTradeNo]
+      )
+    }
+
+    res.json({ code: 0, msg: 'success' })
+  } catch (error) {
+    console.error('Error processing Liantuofu Pay notify:', error)
+    res.json({ code: -1, msg: 'fail' })
+  }
+})
+
+router.post('/liantuofu/notify-test', async (req, res) => {
+  try {
+    console.log('=== Liantuofu Pay notify (test mode) ===')
+    console.log('Request body:', JSON.stringify(req.body, null, 2))
+
+    const { outTradeNo, transactionId, totalAmount, tradeStatus, channel } = req.body
+
+    const db = getDatabase()
+
+    if (tradeStatus === 'SUCCESS' || tradeStatus === 'TRADE_SUCCESS') {
+      await db.orders.run(
+        'UPDATE orders SET status = ?, finishTime = ?, tradeNo = ? WHERE orderNumber = ?',
+        ['completed', new Date().toISOString(), transactionId, outTradeNo]
+      )
+      console.log(`订单${outTradeNo}支付成功，金额${totalAmount}元`)
+    } else if (tradeStatus === 'FAILED' || tradeStatus === 'TRADE_FAILED') {
+      await db.orders.run(
+        'UPDATE orders SET status = ?, failReason = ? WHERE orderNumber = ?',
+        ['failed', '支付失败', outTradeNo]
+      )
+    }
+
+    res.json({ code: 0, msg: 'success' })
+  } catch (error) {
+    console.error('Error processing Liantuofu Pay notify (test):', error)
+    res.json({ code: -1, msg: 'fail' })
   }
 })
 

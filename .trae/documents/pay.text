@@ -1,0 +1,355 @@
+ 联拓富开放平台 完整对接指南（全流程 + 代码示例 + 避坑）
+✅ 核心前提说明
+联拓富开放平台是聚合支付 / 金融类的标准化开放平台，对接核心特点是「统一接口标准、支持多支付渠道（微信 / 支付宝 / 银联）、商户侧一次对接全渠道适配」，整体对接逻辑和单一微信支付相似，但更轻量化、无需单独对接各支付厂商，全程基于 HTTP/HTTPS + JSON 格式 交互，开发成本更低，以下是「企业级落地标准流程」，包含账号准备、接口配置、核心业务对接、代码示例、生产避坑，可直接落地。
+一、对接前置准备（必做，缺一不可）
+✅ 1. 完成商户入驻与资质审核（平台核心门槛）
+这是对接的首要条件，所有接口调用权限均基于审核通过的商户账号，流程如下：
+访问「联拓富开放平台」官网，注册企业商户账号（个人账号无支付接口权限）；
+提交企业资质：营业执照、法人身份证、对公账户信息、商户门头照等；
+等待平台审核（一般 1-3 个工作日），审核通过后会开通「商户号」及基础支付权限；
+审核通过后，平台会自动分配核心身份信息（保存好，所有接口必用）。
+✅ 2. 获取对接必备的「4 个核心密钥 / 参数」（开发基石）
+审核通过后，登录联拓富开放平台后台 → 进入【开发者中心 / API 管理】，获取以下核心信息，绝对保密，严禁前端暴露、严禁提交到代码仓库：
+参数名称	标识 / 常用变量名	核心作用	获取位置
+商户号	merchantNo / mchId	商户唯一身份标识，所有接口必传	开发者中心 - 商户信息
+应用 ID	appId	对接的应用唯一标识（一个商户可创建多个）	开发者中心 - 应用管理 - 创建应用后生成
+应用密钥	appSecret / apiKey	接口签名生成、验签的核心密钥	应用管理 - 对应应用详情（需手动开启）
+商户公钥 / 私钥	publicKey/privateKey	部分敏感接口（退款 / 代付）的数据加密密钥	开发者中心 - 密钥管理 - 生成 RSA 密钥对
+✅ 补充：联拓富支持「MD5 签名（通用接口）、RSA2 签名（敏感接口）」两种方式，默认推荐 MD5（开发更简单）。
+✅ 3. 配置 2 个关键后台信息（接口调用必备）
+在开放平台【应用管理】中，完成 2 项配置，否则接口调用直接报错：
+✅ ① 配置「IP 白名单」
+作用：限制仅白名单内的服务器 IP 可调用接口，防止密钥泄露后的恶意调用；
+配置：填写你的后端服务器公网 IP（多台服务器需填写全部），支持网段格式（如192.168.1.0/24）。
+✅ ② 配置「回调通知地址」
+核心地址 1：支付结果回调地址（如https://你的域名/api/liantofu/notify/pay），支付成功后平台主动推送结果；
+核心地址 2：退款结果回调地址（如https://你的域名/api/liantofu/notify/refund），退款完成后推送结果；
+✅ 硬性要求：HTTPS协议 + 公网可访问 + POST请求 + 无端口（80/443） + 响应超时≤3s。
+✅ 4. 技术前置准备
+开发语言：支持任意后端语言（Node.js/Java/PHP/Python/Go），全程基于 HTTP 请求；
+数据格式：所有接口请求 / 响应均为 JSON 格式，请求头固定传Content-Type: application/json；
+环境区分：平台提供「测试沙箱环境、正式生产环境」，开发先在沙箱调试，验收后切换生产地址；
+依赖工具：需实现「参数排序、MD5/RSA2 加密、签名生成」逻辑（下文附通用代码）。
+二、联拓富开放平台 核心接口对接流程（通用版，全业务适配）
+联拓富的接口设计遵循标准化 RESTful 规范，「支付、退款、查询、代付」等所有业务的对接逻辑一致，核心分为6 个通用步骤，适配所有支付渠道（微信 / 支付宝 / 云闪付）。
+✅ 通用对接核心流程（重中之重，所有接口通用）
+🔴 步骤 1：组装业务请求参数
+根据具体接口文档，拼接业务参数（如支付接口需订单号、金额、支付渠道；退款接口需原订单号、退款金额）；
+✅ 通用规则：
+金额单位：统一为「分」（和微信支付一致，1 元 = 100 分，必须传整数）；
+订单号规则：商户侧生成全局唯一订单号（outTradeNo），同一商户号下不可重复；
+非必填参数：无值时不要传参，而非传空字符串 / NULL，否则会导致签名失败。
+🔴 步骤 2：生成接口签名（核心校验，必做）
+联拓富所有接口强制校验签名，目的是防止参数被篡改，签名验证失败直接返回 400/401 错误，两种主流签名方式的标准规则如下：
+✅ ✨ 方式 A：MD5 签名（推荐，90% 接口使用）【通用版】
+平台默认签名方式，开发最简单，支付 / 查询 / 对账等接口均支持，必掌握
+MD5 签名生成固定规则（严格遵循，错 1 步即失败）
+把所有请求参数（含业务参数 + 公共参数） 按「参数名 ASCII 码升序」排序，生成key=value&key=value格式的字符串；
+在拼接后的字符串末尾拼接固定后缀：&appSecret=你的应用密钥；
+对最终字符串做 MD5 加密（32 位大写），得到的结果即为签名 sign；
+将生成的sign作为新参数，加入到原请求参数中，一起发送请求。
+✅ MD5 签名示例（伪代码）
+plaintext
+// 原参数
+{merchantNo: "M123456", appId: "A67890", outTradeNo: "ORD20260103001", totalFee: 100}
+// 1. ASCII升序排序后拼接
+merchantNo=M123456&appId=A67890&outTradeNo=ORD20260103001&totalFee=100
+// 2. 拼接appSecret后缀（假设appSecret=abc123def）
+merchantNo=M123456&appId=A67890&outTradeNo=ORD20260103001&totalFee=100&appSecret=abc123def
+// 3. MD5加密（32位大写）→ 得到sign
+SIGN = 8E2F543712A9B0C6D7E8F01234567890
+✅ ✨ 方式 B：RSA2 签名（敏感接口专用）【进阶版】
+仅退款、代付、提现、资金查询等高敏感接口使用，签名规则：
+参数排序规则和 MD5 一致；
+用商户私钥对排序后的参数字符串做 SHA256WithRSA 加密；
+加密结果做 Base64 编码，得到签名sign，请求头传signType=RSA2。
+🔴 步骤 3：后端发起 HTTP 请求调用接口
+请求方式：根据接口文档选择POST/GET（支付 / 退款为 POST，查询 / 对账为 GET）；
+请求地址：沙箱 / 生产环境的接口域名 + 接口路径（如沙箱支付接口：https://sandbox.liantofu.com/api/v1/pay/unified）；
+请求头：固定传 Content-Type: application/json，RSA2 签名需额外传 signType: RSA2；
+请求体：包含「业务参数 + 公共参数 + 生成的 sign」的完整 JSON 对象。
+🔴 步骤 4：平台响应结果并验签
+联拓富平台接收请求后，自动校验签名，校验通过则执行业务逻辑，返回 JSON 格式响应数据；
+你的后端接收到响应后，必须验签（规则和请求签名一致）：用平台返回的参数 + 自身appSecret重新生成签名，和响应中的sign对比，一致则数据未被篡改；
+响应状态：通过code字段判断是否成功（约定：code=0 表示接口调用成功，非 0 为失败，失败信息在msg字段）。
+🔴 步骤 5：处理业务结果（同步）
+接口调用成功：更新本地业务数据（如支付接口成功→生成支付链接 / 支付参数，返回给前端；查询接口成功→返回订单状态）；
+接口调用失败：根据msg字段提示用户（如「订单已存在」「余额不足」），并记录日志。
+🔴 步骤 6：处理平台异步回调（权威，必做）
+⚠️ 核心原则：所有支付 / 退款结果，以平台异步回调为准，同步接口返回结果仅做体验优化（防止网络异常、用户关闭页面导致状态不同步）
+平台触发回调：支付成功 / 退款完成后，会主动、多次（重试机制） 向你配置的回调地址推送结果；
+回调处理流程：
+✅ 第一步：验签 → 对回调参数按规则重新生成签名，校验一致性；
+✅ 第二步：核参 → 核对订单号、金额、状态与本地订单一致；
+✅ 第三步：执行业务 → 更新本地订单状态（支付成功→发货 / 积分；退款成功→退款入账）；
+✅ 第四步：返回响应 → 必须返回固定格式 {"code":0,"msg":"success"}，否则平台会每隔 30s 重试，累计重试 24 小时。
+三、实战落地：Node.js 完整对接示例（支付核心接口，可直接复制）
+结合你之前的技术栈（Node.js），提供联拓富「统一支付接口」 完整对接代码，包含「签名生成、接口调用、前端调起、回调处理」全链路，适配微信 / 支付宝 / 银联支付渠道，直接复用即可。
+✅ 前置：安装依赖
+bash
+运行
+# 核心依赖：HTTP请求 + MD5加密 + 服务端框架（Express）
+npm install axios crypto-js express --save
+✅ 1. 全局配置文件（统一管理密钥 / 地址，推荐单独创建：liantofu.config.js）
+javascript
+运行
+// 联拓富配置文件，所有参数替换为你的实际值
+module.exports = {
+  // 环境切换：true=测试沙箱，false=正式生产
+  isSandbox: true,
+  // 核心密钥（从开放平台获取）
+  merchantNo: "你的商户号MXXXXXXX",
+  appId: "你的应用ID AXXXXXXX",
+  appSecret: "你的应用密钥 abc123def456ghi789jkl",
+  // 接口域名（沙箱/生产区分）
+  baseUrl: function () {
+    return this.isSandbox 
+      ? "https://sandbox.liantofu.com/api/v1" 
+      : "https://api.liantofu.com/api/v1";
+  },
+  // 回调地址（需在平台配置，和此处一致）
+  payNotifyUrl: "https://你的域名/api/liantofu/notify/pay",
+  refundNotifyUrl: "https://你的域名/api/liantofu/notify/refund"
+};
+✅ 2. 通用工具类（签名生成 + 验签，核心：liantofu.util.js）
+javascript
+运行
+const crypto = require('crypto-js');
+const config = require('./liantofu.config');
+
+/**
+ * MD5签名生成工具（联拓富标准）
+ * @param {Object} params 待签名的参数对象
+ * @returns {String} 32位大写MD5签名
+ */
+function generateSign(params) {
+  // 1. 过滤空值参数
+  const validParams = {};
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== null && params[key] !== "") {
+      validParams[key] = params[key];
+    }
+  });
+  // 2. 按参数名ASCII升序排序
+  const sortedKeys = Object.keys(validParams).sort();
+  let signStr = "";
+  sortedKeys.forEach(key => {
+    signStr += `${key}=${validParams[key]}&`;
+  });
+  // 3. 拼接appSecret后缀，去掉最后一个&
+  signStr = signStr.substring(0, signStr.length - 1) + `&appSecret=${config.appSecret}`;
+  // 4. MD5加密并转大写
+  const md5Sign = crypto.MD5(signStr).toString().toUpperCase();
+  return md5Sign;
+}
+
+/**
+ * 验签工具（验证平台响应/回调的签名）
+ * @param {Object} params 响应/回调的参数对象
+ * @returns {Boolean} true=验签成功，false=失败
+ */
+function verifySign(params) {
+  const sign = params.sign;
+  delete params.sign; // 移除原签名，重新生成对比
+  const newSign = generateSign(params);
+  return newSign === sign;
+}
+
+module.exports = { generateSign, verifySign };
+✅ 3. 核心业务：统一支付接口开发（后端）
+javascript
+运行
+const axios = require('axios');
+const config = require('./liantofu.config');
+const { generateSign } = require('./liantofu.util');
+
+/**
+ * 联拓富统一支付接口调用
+ * @param {String} outTradeNo 商户唯一订单号
+ * @param {Number} totalFee 支付金额（单位：分）
+ * @param {String} payType 支付渠道：WX=微信，ALI=支付宝，UNION=银联
+ * @param {String} clientIp 付款用户的真实IP
+ * @returns {Promise<Object>} 支付参数（前端调起用）
+ */
+async function unifiedPay(outTradeNo, totalFee, payType, clientIp) {
+  try {
+    // 1. 组装请求参数（公共参数+业务参数）
+    const reqParams = {
+      merchantNo: config.merchantNo,
+      appId: config.appId,
+      outTradeNo: outTradeNo,
+      totalFee: totalFee,
+      payType: payType,
+      clientIp: clientIp,
+      notifyUrl: config.payNotifyUrl,
+      subject: "商品支付", // 商品描述，必填
+      body: "测试商品支付", // 商品详情，可选
+      timestamp: Date.now() // 时间戳（毫秒），必填
+    };
+
+    // 2. 生成签名并加入参数
+    reqParams.sign = generateSign(reqParams);
+
+    // 3. 发起POST请求调用联拓富支付接口
+    const res = await axios.post(
+      `${config.baseUrl()}/pay/unified`,
+      reqParams,
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    const result = res.data;
+    // 4. 验签平台响应结果
+    if (!verifySign(result)) {
+      return { code: -1, msg: "平台响应签名验证失败" };
+    }
+
+    // 5. 处理响应结果
+    if (result.code === 0) {
+      // 支付接口调用成功，返回前端调起参数
+      return {
+        code: 0,
+        msg: "success",
+        data: {
+          payUrl: result.data.payUrl, // 支付链接（扫码/跳转用）
+          payParams: result.data.payParams, // 前端调起参数（小程序/APP支付）
+          outTradeNo: outTradeNo
+        }
+      };
+    } else {
+      return { code: result.code, msg: result.msg };
+    }
+  } catch (err) {
+    console.error("联拓富支付接口调用失败：", err.message);
+    return { code: -1, msg: "支付接口调用异常，请稍后重试" };
+  }
+}
+
+// 调用示例：支付1元（100分），微信渠道
+unifiedPay("ORD202601030001", 100, "WX", "192.168.1.100")
+  .then(res => console.log(res))
+  .catch(err => console.error(err));
+
+module.exports = { unifiedPay };
+✅ 4. 核心必做：支付回调接口开发（后端）
+javascript
+运行
+const express = require('express');
+const app = express();
+app.use(express.json()); // 解析JSON请求体
+const { verifySign } = require('./liantofu.util');
+
+/**
+ * 联拓富支付结果回调接口（必须是POST + HTTPS）
+ */
+app.post('/api/liantofu/notify/pay', async (req, res) => {
+  try {
+    const callbackData = req.body;
+    console.log("支付回调数据：", callbackData);
+
+    // 1. 验签（核心，防止伪造回调）
+    if (!verifySign(callbackData)) {
+      console.error("支付回调验签失败");
+      return res.json({ code: -1, msg: "sign error" });
+    }
+
+    // 2. 校验回调状态（code=0 表示支付成功）
+    if (callbackData.code === 0 && callbackData.data.tradeStatus === "SUCCESS") {
+      const { outTradeNo, totalFee, payType } = callbackData.data;
+      // ✅ 业务逻辑：更新本地订单状态为「已支付」
+      // await updateOrderStatus(outTradeNo, "paid");
+      console.log(`订单${outTradeNo}支付成功，金额${totalFee}分`);
+    }
+
+    // 3. 必须返回固定格式，告知平台回调处理完成（否则重试）
+    res.json({ code: 0, msg: "success" });
+  } catch (err) {
+    console.error("支付回调处理失败：", err.message);
+    res.json({ code: -1, msg: "fail" });
+  }
+});
+
+// 启动服务（端口自定义，建议80/443）
+app.listen(443, () => {
+  console.log("联拓富回调服务启动成功");
+});
+✅ 5. 前端调起支付（2 种主流方式，适配所有场景）
+后端调用支付接口成功后，会返回payUrl/payParams，前端根据支付渠道选择对应调起方式，无需前端处理签名：
+✅ 方式 1：扫码支付 / PC 端支付（返回 payUrl，生成二维码）
+javascript
+运行
+// 后端返回的payUrl是支付链接，前端用QRCode插件生成二维码，用户扫码付款
+import QRCode from 'qrcode';
+const payUrl = res.data.payUrl;
+// 生成二维码并渲染到页面
+QRCode.toCanvas(document.getElementById('qrcode'), payUrl, (err) => {
+  if (err) console.error(err);
+});
+✅ 方式 2：小程序 / APP 支付（返回 payParams，直接调起）
+javascript
+运行
+// 微信小程序调起示例（联拓富已封装好微信支付参数）
+const payParams = res.data.payParams;
+wx.requestPayment({
+  timeStamp: payParams.timeStamp,
+  nonceStr: payParams.nonceStr,
+  package: payParams.package,
+  signType: payParams.signType,
+  paySign: payParams.paySign,
+  success: () => { wx.showToast({ title: '支付中' }) },
+  fail: (err) => { wx.showToast({ title: '支付失败', icon: 'none' }) }
+});
+四、联拓富对接 高频接口清单（按需开发）
+除核心支付接口外，平台提供标准化的配套接口，满足完整业务闭环，接口调用逻辑和支付一致，仅需更换参数和接口路径：
+✅ 基础业务接口（必开发）
+订单查询接口：/pay/query → 根据outTradeNo查询订单支付状态、金额、渠道；
+退款接口：/refund/apply → 发起退款，需传原订单号、退款金额、退款原因；
+退款查询接口：/refund/query → 查询退款进度、退款结果；
+对账接口：/bill/download → 下载每日交易对账文件，核对资金流水。
+✅ 高级业务接口（按需开发）
+代付接口：/transfer/apply → 商户向用户银行卡 / 微信 / 支付宝转账；
+资金查询接口：/fund/balance → 查询商户账户余额、冻结金额；
+分账接口：/profit/share → 支付成功后，自动分账给子商户 / 供应商。
+五、联拓富对接 避坑指南（100% 踩过，必看）
+❌ 高频错误 1：签名失败（接口返回 401 / 签名验证失败）→ 90% 开发者踩坑
+✅ 解决方案：
+检查参数是否严格按 ASCII 升序排序（最常见错误，如参数顺序颠倒）；
+确认appSecret是否和平台配置一致，无空格 / 大小写错误；
+过滤空值参数（无值的参数不要传，否则会干扰签名）；
+金额单位是否为分，是否传了整数（如 1 元 = 100，而非 1）。
+❌ 高频错误 2：回调接口收不到数据 / 平台提示回调失败
+✅ 解决方案：
+确认回调地址是HTTPS 公网地址，可通过postman测试是否能访问；
+回调接口必须返回固定格式 {"code":0,"msg":"success"}，不能返回 HTML / 其他格式；
+检查服务器防火墙 / 安全组，是否放行联拓富平台的 IP 段（平台文档可下载）；
+回调接口响应超时≤3s，复杂业务逻辑异步处理（先返回成功，再执行业务）。
+❌ 高频错误 3：IP 白名单限制（接口返回 403/IP 无权限）
+✅ 解决方案：
+在平台【应用管理】中，添加后端服务器公网 IP（不是内网 IP）；
+若使用代理 / 负载均衡，需添加代理服务器的公网 IP；
+沙箱环境和生产环境的 IP 白名单分开配置，不要混淆。
+❌ 高频错误 4：支付渠道权限不足（接口返回 400 / 渠道未开通）
+✅ 解决方案：
+登录开放平台，检查商户是否开通对应支付渠道（微信 / 支付宝 / 银联）；
+确认支付接口传的payType值正确（WX/ALI/UNION，严格区分大小写）；
+小程序支付需额外配置「小程序 APPID」到平台应用管理中。
+❌ 高频错误 5：订单号重复（接口返回 400 / 订单已存在）
+✅ 解决方案：
+商户侧订单号outTradeNo必须全局唯一，建议格式：商户号+日期+随机数（如 M1234562026010300001）；
+支付失败的订单，重新发起支付时必须生成新的订单号，不可复用。
+六、沙箱测试 → 生产上线 流程（标准化，必走）
+✅ 1. 沙箱测试阶段（无真实资金，放心调试）
+所有接口调用使用沙箱域名，密钥用沙箱环境的测试密钥；
+平台提供测试支付账号（微信 / 支付宝测试号），扫码 / 付款无真实资金流转；
+测试所有核心流程：支付、回调、退款、查询，确保无 BUG。
+✅ 2. 生产上线阶段（正式资金流转）
+切换配置：将isSandbox改为false，替换为生产环境密钥、生产接口域名；
+重新配置：生产环境的「IP 白名单、回调地址」需和沙箱环境分开配置；
+灰度上线：先小流量测试（如 1 笔真实支付），确认资金到账、回调正常；
+正式上线：全量开放支付功能，开启日志监控（接口调用日志、回调日志）。
+✅ 总结（核心要点提炼）
+联拓富对接前置核心：企业资质审核通过 + 获取merchantNo/appId/appSecret + 配置 IP 白名单 / 回调地址；
+接口对接核心规则：JSON 格式、MD5 签名（ASCII 升序）、金额传分、回调必验签 + 返固定响应；
+技术选型最优实践：Node.js 后端处理所有签名 / 接口调用，前端仅负责调起支付，密钥绝对保密；
+核心原则：支付 / 退款结果以异步回调为准，同步接口仅做体验优化；
+避坑关键：严格遵循签名规则、配置正确的网络信息、订单号全局唯一。
+按照以上流程对接，1 个工作日即可完成联拓富开放平台核心功能落地，适配微信 / 支付宝 / 银联全支付渠道，实现企业级聚合支付业务闭环！

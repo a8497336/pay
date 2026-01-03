@@ -1,31 +1,8 @@
 import express from 'express'
 import { getDatabase } from '../models/database.js'
+import paymentPollingService from '../services/paymentPollingService.js'
 
 const router = express.Router()
-
-router.get('/', async (req, res) => {
-  try {
-    const { status, keyword } = req.query
-    const db = getDatabase()
-
-    let ordersList = await db.orders.all()
-
-    if (status) {
-      ordersList = ordersList.filter(order => order.status === status)
-    }
-
-    if (keyword) {
-      ordersList = ordersList.filter(order =>
-        order.orderNumber.includes(keyword) || order.accountNumber.includes(keyword)
-      )
-    }
-
-    res.json(ordersList)
-  } catch (error) {
-    console.error('Error fetching orders:', error)
-    res.status(500).json({ error: 'Failed to fetch orders' })
-  }
-})
 
 router.get('/search', async (req, res) => {
   try {
@@ -53,7 +30,7 @@ router.get('/:id', async (req, res) => {
     const { id } = req.params
     const db = getDatabase()
 
-    const order = await db.orders.get('SELECT * FROM orders WHERE orderNumber = ?', id)
+    const order = await db.orders.get('SELECT * FROM orders WHERE orderNumber = ?', [id])
 
     if (!order) {
       return res.status(404).json({ error: 'Order not found' })
@@ -63,6 +40,30 @@ router.get('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error fetching order:', error)
     res.status(500).json({ error: 'Failed to fetch order' })
+  }
+})
+
+router.get('/', async (req, res) => {
+  try {
+    const { status, keyword } = req.query
+    const db = getDatabase()
+
+    let ordersList = await db.orders.all()
+
+    if (status) {
+      ordersList = ordersList.filter(order => order.status === status)
+    }
+
+    if (keyword) {
+      ordersList = ordersList.filter(order =>
+        order.orderNumber.includes(keyword) || order.accountNumber.includes(keyword)
+      )
+    }
+
+    res.json(ordersList)
+  } catch (error) {
+    console.error('Error fetching orders:', error)
+    res.status(500).json({ error: 'Failed to fetch orders' })
   }
 })
 
@@ -181,6 +182,27 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting order:', error)
     res.status(500).json({ error: 'Failed to delete order' })
+  }
+})
+
+router.post('/:id/check-payment-status', async (req, res) => {
+  try {
+    const { id } = req.params
+
+    if (!id) {
+      return res.status(400).json({ success: false, error: 'Order number is required' })
+    }
+
+    const result = await paymentPollingService.manuallyCheckOrderStatus(id)
+
+    if (result.success) {
+      res.json(result)
+    } else {
+      res.status(500).json(result)
+    }
+  } catch (error) {
+    console.error('Error checking payment status:', error)
+    res.status(500).json({ success: false, error: 'Failed to check payment status' })
   }
 })
 

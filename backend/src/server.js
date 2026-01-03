@@ -4,6 +4,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { initDatabase } from './models/database.js'
 import { startProgressUpdater } from './utils/progressUpdater.js'
+import paymentPollingService from './services/paymentPollingService.js'
 import orderRoutes from './routes/orders.js'
 import aftersaleRoutes from './routes/aftersales.js'
 import paymentRoutes from './routes/payment.js'
@@ -39,6 +40,7 @@ const startServer = async () => {
   try {
     await initDatabase()
     startProgressUpdater()
+    paymentPollingService.startPaymentStatusPolling()
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`)
