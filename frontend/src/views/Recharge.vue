@@ -85,16 +85,22 @@ const handlePayment = async (paymentResult) => {
     const response = await paymentApi.processPayment(paymentData)
     console.log('Payment response:', response)
     if (response.success) {
-      if (response.payUrl || response.qrCode) {
-                paymentVisible.value = false
-        window.location.href = response.payUrl || response.qrCode;
-        // qrCodeData.value = {
-        //   qrCode: response.qrCode,
-        //   orderNumber: response.orderNumber,
-        //   payAmount: orderData.value.payAmount
-        // }
-        // paymentVisible.value = false
-        // qrCodeVisible.value = true
+      if (response.qrCode) {
+        qrCodeData.value = {
+          qrCode: response.qrCode,
+          orderNumber: response.orderNumber,
+          payAmount: orderData.value.payAmount
+        }
+        paymentVisible.value = false
+        qrCodeVisible.value = true
+      } else if (response.payUrl) {
+        qrCodeData.value = {
+          qrCode: response.payUrl,
+          orderNumber: response.orderNumber,
+          payAmount: orderData.value.payAmount
+        }
+        paymentVisible.value = false
+        qrCodeVisible.value = true
       } else {
         createdOrder.value = {
           ...orderData.value,

@@ -81,6 +81,63 @@ router.post('/', async (req, res) => {
     }
 
     res.json(responseData)
+
+    const db = getDatabase()
+    const pollInterval = 5000
+    const maxPollDuration = 120000
+    const startTime = Date.now()
+
+    const pollPaymentStatus = async () => {
+      try {
+        const elapsed = Date.now() - startTime
+        if (elapsed >= maxPollDuration) {
+          console.log(`Order ${orderNumber} polling timeout after 2 minutes`)
+          return
+        }
+
+        const queryResult = await liantuofuPayService.queryPaymentStatus(orderNumber)
+        console.log(`Order ${orderNumber} payment status: ${queryResult.tradeStatus}`)
+
+        if (queryResult.success) {
+          if (queryResult.tradeStatus === 'SUCCESS' || queryResult.tradeStatus === 'TRADE_SUCCESS') {
+            await db.orders.run(
+              'UPDATE orders SET status = ?, finishTime = ? WHERE orderNumber = ?',
+              ['completed', new Date().toISOString(), orderNumber]
+            )
+            console.log(`Order ${orderNumber} payment completed`)
+            return
+          } else if (queryResult.tradeStatus === 'TRADE_CLOSED' || queryResult.tradeStatus === 'CLOSED') {
+            await db.orders.run(
+              'UPDATE orders SET status = ?, failReason = ? WHERE orderNumber = ?',
+              ['failed', '订单已关闭', orderNumber]
+            )
+            console.log(`Order ${orderNumber} payment closed`)
+            return
+          } else if (queryResult.tradeStatus === 'FAILED' || queryResult.tradeStatus === 'TRADE_FAILED') {
+            await db.orders.run(
+              'UPDATE orders SET status = ?, failReason = ? WHERE orderNumber = ?',
+              ['failed', '支付失败', orderNumber]
+            )
+            console.log(`Order ${orderNumber} payment failed`)
+            return
+          } else if (queryResult.tradeStatus === 'REFUND') {
+            await db.orders.run(
+              'UPDATE orders SET status = ?, failReason = ? WHERE orderNumber = ?',
+              ['failed', '已退款', orderNumber]
+            )
+            console.log(`Order ${orderNumber} payment refunded`)
+            return
+          }
+        }
+
+        setTimeout(pollPaymentStatus, pollInterval)
+      } catch (error) {
+        console.error(`Error polling payment status for order ${orderNumber}:`, error)
+        setTimeout(pollPaymentStatus, pollInterval)
+      }
+    }
+
+    setTimeout(pollPaymentStatus, pollInterval)
   } catch (error) {
     console.error('Error processing payment:', error)
     res.status(500).json({ error: 'Failed to process payment' })

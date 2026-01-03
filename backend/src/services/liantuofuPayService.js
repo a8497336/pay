@@ -77,7 +77,7 @@ async function createPaymentOrder(orderData) {
       outTradeNo: orderData.orderNumber,
       totalAmount: orderData.payAmount.toString(),
       expireSeconds: '300',
-      notifyUrl: liantuofuConfig.notifyUrl,
+      returnUrl: liantuofuConfig.notifyUrl,
       channel: 'WXPAY',
       goodsDetail: JSON.stringify([{
         goodsId: 'electric_recharge',

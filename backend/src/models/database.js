@@ -167,7 +167,7 @@ export const getDatabase = () => {
             if (setClause) {
               const fields = setClause.split(',').map(a => a.trim().split('=')[0].trim())
               fields.forEach((field, i) => {
-                if (params[i] !== undefined) {
+                if (params[i] !== undefined && i < fields.length) {
                   orders[index][field] = params[i]
                 }
               })

@@ -40,7 +40,6 @@ const startServer = async () => {
   try {
     await initDatabase()
     startProgressUpdater()
-    paymentPollingService.startPaymentStatusPolling()
 
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`)
