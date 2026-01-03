@@ -7,7 +7,7 @@ const router = express.Router()
 
 router.post('/', async (req, res) => {
   try {
-    const { faceAmount, payAmount, paymentMethod, orderData: orderInfo } = req.body
+    const { faceAmount, payAmount, paymentMethod, openid, orderData: orderInfo } = req.body
 
     const orderNumber = 'D' + Date.now() + Math.random().toString(36).substr(2, 4).toUpperCase()
     const tradeNo = 'LT' + Date.now() + Math.random().toString(36).substr(2, 8).toUpperCase()
@@ -52,6 +52,7 @@ router.post('/', async (req, res) => {
       payAmount,
       faceAmount,
       paymentMethod,
+      openid,
       subject: '电费充值',
       body: `充值${faceAmount}元`
     }
@@ -74,6 +75,14 @@ router.post('/', async (req, res) => {
 
     if (paymentResult.qrCode) {
       responseData.qrCode = paymentResult.qrCode
+    }
+
+    if (paymentResult.payParams) {
+      responseData.jsapiParams = paymentResult.payParams
+    }
+
+    if (paymentResult.h5Url) {
+      responseData.h5Url = paymentResult.h5Url
     }
 
     res.json(responseData)

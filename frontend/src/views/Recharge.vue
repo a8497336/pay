@@ -32,6 +32,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOrderStore } from '@/stores/order'
+import { useUserStore } from '@/stores/user'
 import { orderApi, paymentApi } from '@/api'
 import RechargeForm from '@/components/RechargeForm.vue'
 import WelcomeModal from '@/components/WelcomeModal.vue'
@@ -41,6 +42,7 @@ import SuccessModal from '@/components/SuccessModal.vue'
 
 const router = useRouter()
 const orderStore = useOrderStore()
+const userStore = useUserStore()
 
 const welcomeVisible = ref(true)
 const paymentVisible = ref(false)
@@ -75,25 +77,23 @@ const handleFormSubmit = async (formData) => {
 
 const handlePayment = async (paymentResult) => {
   try {
+    if (!userStore.openid && userStore.isWechatBrowser()) {
+      userStore.redirectToWechatAuth()
+      return
+    }
+
     const paymentData = {
       faceAmount: orderData.value.faceAmount,
       payAmount: orderData.value.payAmount,
-      paymentMethod: paymentResult.paymentMethod,
+      paymentMethod: 'jsapi',
+      openid: userStore.openid,
       orderData: orderData.value
     }
 
     const response = await paymentApi.processPayment(paymentData)
     console.log('Payment response:', response)
     if (response.success) {
-      if (response.qrCode) {
-        qrCodeData.value = {
-          qrCode: response.qrCode,
-          orderNumber: response.orderNumber,
-          payAmount: orderData.value.payAmount
-        }
-        paymentVisible.value = false
-        qrCodeVisible.value = true
-      } else if (response.jsapiParams) {
+      if (response.jsapiParams) {
         handleWechatJSAPIPayment(response.jsapiParams, response.orderNumber)
         createdOrder.value = {
           ...orderData.value,
@@ -102,7 +102,14 @@ const handlePayment = async (paymentResult) => {
         }
         orderStore.addOrder(createdOrder.value)
         paymentVisible.value = false
-        successVisible.value = true
+      } else if (response.qrCode) {
+        qrCodeData.value = {
+          qrCode: response.qrCode,
+          orderNumber: response.orderNumber,
+          payAmount: orderData.value.payAmount
+        }
+        paymentVisible.value = false
+        qrCodeVisible.value = true
       } else {
         createdOrder.value = {
           ...orderData.value,
