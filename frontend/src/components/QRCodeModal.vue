@@ -251,7 +251,7 @@ const handleOutsideClick = () => {
 .qr-tip {
   margin-top: 16px;
   font-size: 14px;
-  color: #666;
+  color: red;
 }
 
 .qr-status {
