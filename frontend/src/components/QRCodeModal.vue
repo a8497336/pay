@@ -11,7 +11,7 @@
           <canvas ref="qrCanvas" v-show="!qrCodeImage"></canvas>
           <img ref="qrImage" v-show="qrCodeImage" :src="qrCodeImage" alt="支付二维码" class="qr-code-img" />
         </div>
-        <p class="qr-tip">请使用微信或支付宝扫一扫支付</p>
+        <p class="qr-tip">长按识别二维码支付或扫码支付</p>
         <p class="qr-status" v-if="lastStatus">当前状态：{{ getStatusText(lastStatus) }}</p>
       </div>
       <div class="modal-footer">

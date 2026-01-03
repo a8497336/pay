@@ -235,7 +235,7 @@ const handleWechatJSAPIPayment = (jsapiParams, orderNumber) => {
   padding: 12px 8px;
   cursor: pointer;
   color: #666;
-  font-size: 13px;
+  font-size: 16px;
   transition: all 0.3s ease;
   border-radius: 12px;
   margin: 0 4px;
@@ -297,8 +297,8 @@ const handleWechatJSAPIPayment = (jsapiParams, orderNumber) => {
   }
 
   .nav-item {
-    font-size: 12px;
-    padding: 14px 6px;
+    font-size: 16px;
+    padding: 10px 4px;
   }
 }
 
