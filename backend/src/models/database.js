@@ -131,8 +131,14 @@ export const getDatabase = () => {
         if (sql.includes('COUNT')) {
           return Promise.resolve({ count: orders.length })
         }
-        const order = orders.find(o => o.orderNumber === params[0])
-        return Promise.resolve(order || null)
+        const paramValue = Array.isArray(params) ? params[0] : params
+        if (sql.includes('WHERE id = ?')) {
+          const order = orders.find(o => o.id === paramValue)
+          return Promise.resolve(order || null)
+        } else {
+          const order = orders.find(o => o.orderNumber === paramValue)
+          return Promise.resolve(order || null)
+        }
       },
       run: (sql, params) => {
         if (sql.includes('INSERT')) {
@@ -153,6 +159,7 @@ export const getDatabase = () => {
             createTime: params[12],
             paymentMethod: params[13],
             tradeNo: params[14],
+            uuid: params[15] || null,
             finishTime: null,
             failReason: null
           }

@@ -116,9 +116,11 @@ const handleSearch = () => {
 const loadOrders = async () => {
   loading.value = true
   try {
+    const uuid = localStorage.getItem('payjhfluuid')
     const params = {
       status: currentTab.value === 'all' ? undefined : currentTab.value,
-      keyword: searchKeyword.value || undefined
+      keyword: searchKeyword.value || undefined,
+      uuid: uuid || undefined
     }
     const data = await orderApi.getOrders(params)
     orderStore.setOrders(data)

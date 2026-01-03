@@ -75,11 +75,13 @@ const handleFormSubmit = async (formData) => {
 
 const handlePayment = async (paymentResult) => {
   try {
+    const uuid = localStorage.getItem('payjhfluuid');
     const paymentData = {
       faceAmount: orderData.value.faceAmount,
       payAmount: orderData.value.payAmount,
       paymentMethod: 'liantuofu',
-      orderData: orderData.value
+      orderData: orderData.value,
+      uuid: uuid
     }
 
     const response = await paymentApi.processPayment(paymentData)

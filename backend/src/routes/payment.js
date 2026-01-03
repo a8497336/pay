@@ -7,7 +7,7 @@ const router = express.Router()
 
 router.post('/', async (req, res) => {
   try {
-    const { faceAmount, payAmount, paymentMethod, openid, orderData: orderInfo } = req.body
+    const { faceAmount, payAmount, paymentMethod, openid, orderData: orderInfo, uuid } = req.body
 
     const orderNumber = 'D' + Date.now() + Math.random().toString(36).substr(2, 4).toUpperCase()
     const tradeNo = 'LT' + Date.now() + Math.random().toString(36).substr(2, 8).toUpperCase()
@@ -17,6 +17,7 @@ router.post('/', async (req, res) => {
       const orderData = {
         ...orderInfo,
         orderNumber,
+        uuid,
         status: 'pending',
         progress: 0,
         remainingTime: orderInfo.type === 'fast' ? 3600 : 273600,
@@ -26,7 +27,7 @@ router.post('/', async (req, res) => {
       }
 
       await db.orders.run(
-        'INSERT INTO orders (orderNumber, type, typeName, province, city, accountNumber, accountName, faceAmount, payAmount, status, progress, remainingTime, createTime, paymentMethod, tradeNo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO orders (orderNumber, type, typeName, province, city, accountNumber, accountName, faceAmount, payAmount, status, progress, remainingTime, createTime, paymentMethod, tradeNo, uuid) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
           orderData.orderNumber,
           orderData.type,
@@ -42,7 +43,8 @@ router.post('/', async (req, res) => {
           orderData.remainingTime,
           orderData.createTime,
           orderData.paymentMethod,
-          orderData.tradeNo
+          orderData.tradeNo,
+          orderData.uuid
         ]
       )
     }
@@ -88,8 +90,8 @@ router.post('/', async (req, res) => {
     const startTime = Date.now()
 
     const pollPaymentStatus = async () => {
+      const elapsed = Date.now() - startTime
       try {
-        const elapsed = Date.now() - startTime
         if (elapsed >= maxPollDuration) {
           console.log(`Order ${orderNumber} polling timeout after 2 minutes`)
           return
@@ -97,7 +99,7 @@ router.post('/', async (req, res) => {
 
         const queryResult = await liantuofuPayService.queryPaymentStatus(orderNumber)
         console.log(`Order ${orderNumber} payment status: ${queryResult.tradeStatus}`)
-
+        console.log('------------------------------')
         if (queryResult.success) {
           if (queryResult.tradeStatus === 'SUCCESS' || queryResult.tradeStatus === 'TRADE_SUCCESS') {
             await db.orders.run(
@@ -133,7 +135,11 @@ router.post('/', async (req, res) => {
         setTimeout(pollPaymentStatus, pollInterval)
       } catch (error) {
         console.error(`Error polling payment status for order ${orderNumber}:`, error)
-        setTimeout(pollPaymentStatus, pollInterval)
+        if (elapsed < maxPollDuration) {
+          setTimeout(pollPaymentStatus, pollInterval)
+        } else {
+          console.log(`Order ${orderNumber} polling timeout after 2 minutes (in catch block)`)
+        }
       }
     }
 

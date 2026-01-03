@@ -5,6 +5,10 @@
 </template>
 
 <script setup>
+  const uuid = localStorage.getItem('payjhfluuid');
+  if (!uuid) {
+    localStorage.setItem('payjhfluuid', `${Math.random().toString(36).substring(2, 10)}-${Date.now()}`)
+  }
 </script>
 
 <style>

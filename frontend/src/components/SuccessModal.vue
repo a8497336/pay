@@ -27,6 +27,9 @@
 <script setup>
 import { computed } from 'vue'
 import { paymentApi } from '@/api'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const props = defineProps({
   visible: {
@@ -48,6 +51,9 @@ const isMockPayment = computed(() => {
 const handleClose = () => {
   emit('update:visible', false)
   emit('close')
+  router.push('/orders')
+
+  
 }
 
 const handleOutsideClick = () => {

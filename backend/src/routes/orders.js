@@ -45,10 +45,14 @@ router.get('/:id', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { status, keyword } = req.query
+    const { status, keyword, uuid } = req.query
     const db = getDatabase()
 
     let ordersList = await db.orders.all()
+
+    if (uuid) {
+      ordersList = ordersList.filter(order => order.uuid === uuid)
+    }
 
     if (status) {
       ordersList = ordersList.filter(order => order.status === status)
@@ -94,7 +98,7 @@ router.post('/', async (req, res) => {
       ]
     )
 
-    const newOrder = await db.orders.get('SELECT * FROM orders WHERE id = ?', result.id)
+    const newOrder = await db.orders.get('SELECT * FROM orders WHERE id = ?', [result.id])
     res.status(201).json(newOrder)
   } catch (error) {
     console.error('Error creating order:', error)
@@ -115,14 +119,14 @@ router.put('/:id/status', async (req, res) => {
 
     const result = await db.orders.run(
       'UPDATE orders SET status = ? WHERE orderNumber = ?',
-      status, id
+      [status, id]
     )
 
     if (result.changes === 0) {
       return res.status(404).json({ success: false, error: 'Order not found' })
     }
 
-    const updatedOrder = await db.orders.get('SELECT * FROM orders WHERE orderNumber = ?', id)
+    const updatedOrder = await db.orders.get('SELECT * FROM orders WHERE orderNumber = ?', [id])
     res.json({ success: true, order: updatedOrder })
   } catch (error) {
     console.error('Error updating order status:', error)
@@ -152,7 +156,7 @@ router.put('/:id', async (req, res) => {
     const params = [...Object.values(updateData), id]
     const result = await db.orders.run(
       'UPDATE orders SET ... WHERE orderNumber = ?',
-      ...params
+      params
     )
 
     if (result.changes === 0) {
@@ -172,7 +176,7 @@ router.delete('/:id', async (req, res) => {
     const { id } = req.params
     const db = getDatabase()
 
-    const result = await db.orders.run('DELETE FROM orders WHERE orderNumber = ?', id)
+    const result = await db.orders.run('DELETE FROM orders WHERE orderNumber = ?', [id])
 
     if (result.changes === 0) {
       return res.status(404).json({ error: 'Order not found' })
