@@ -8,9 +8,11 @@ const __dirname = path.dirname(__filename)
 const dataDir = path.join(__dirname, '../../database')
 const ordersFile = path.join(dataDir, 'orders.json')
 const aftersalesFile = path.join(dataDir, 'aftersales.json')
+const configFile = path.join(dataDir, 'config.json')
 
 let orders = []
 let aftersales = []
+let config = []
 let dbInstance = null
 let isInitialized = false
 
@@ -21,6 +23,7 @@ export const initDatabase = () => {
 
   loadOrders()
   loadAftersales()
+  loadConfig()
 
   if (orders.length === 0) {
     insertSampleData()
@@ -50,6 +53,17 @@ const loadAftersales = () => {
 
 const saveAftersales = () => {
   fs.writeFileSync(aftersalesFile, JSON.stringify(aftersales, null, 2), 'utf8')
+}
+
+const loadConfig = () => {
+  if (fs.existsSync(configFile)) {
+    const data = fs.readFileSync(configFile, 'utf8')
+    config = JSON.parse(data)
+  }
+}
+
+const saveConfig = () => {
+  fs.writeFileSync(configFile, JSON.stringify(config, null, 2), 'utf8')
 }
 
 const insertSampleData = () => {
@@ -117,6 +131,7 @@ export const getDatabase = () => {
   if (!isInitialized) {
     loadOrders()
     loadAftersales()
+    loadConfig()
     isInitialized = true
   }
 
@@ -222,6 +237,58 @@ export const getDatabase = () => {
             aftersales[index] = { ...aftersales[index], ...params }
             saveAftersales()
             return Promise.resolve({ changes: 1 })
+          }
+          return Promise.resolve({ changes: 0 })
+        }
+        return Promise.resolve({ changes: 0 })
+      }
+    },
+    config: {
+      all: () => Promise.resolve(config),
+      get: (sql, params) => {
+        if (sql.includes('WHERE id = ?')) {
+          const item = config.find(c => c.id === params[0])
+          return Promise.resolve(item || null)
+        } else if (sql.includes('WHERE id =')) {
+          const idMatch = sql.match(/WHERE id = (\d+)/)
+          if (idMatch) {
+            const id = parseInt(idMatch[1])
+            const item = config.find(c => c.id === id)
+            return Promise.resolve(item || null)
+          }
+        }
+        return Promise.resolve(null)
+      },
+      run: (sql, params) => {
+        if (sql.includes('INSERT')) {
+          const newConfig = {
+            id: params[0],
+            fastDiscount: params[1],
+            slowDiscount: params[2]
+          }
+          config.push(newConfig)
+          saveConfig()
+          return Promise.resolve({ id: newConfig.id, changes: 1 })
+        } else if (sql.includes('UPDATE')) {
+          const idMatch = sql.match(/WHERE id = (\d+)/)
+          if (idMatch) {
+            const id = parseInt(idMatch[1])
+            const index = config.findIndex(c => c.id === id)
+            if (index !== -1) {
+              config[index].fastDiscount = params[0]
+              config[index].slowDiscount = params[1]
+              saveConfig()
+              return Promise.resolve({ changes: 1 })
+            }
+          } else {
+            const id = params[params.length - 1]
+            const index = config.findIndex(c => c.id === id)
+            if (index !== -1) {
+              config[index].fastDiscount = params[0]
+              config[index].slowDiscount = params[1]
+              saveConfig()
+              return Promise.resolve({ changes: 1 })
+            }
           }
           return Promise.resolve({ changes: 0 })
         }

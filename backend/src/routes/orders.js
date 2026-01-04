@@ -45,10 +45,14 @@ router.get('/:id', async (req, res) => {
 
 router.get('/', async (req, res) => {
   try {
-    const { status, keyword, uuid } = req.query
+    const { status, keyword, uuid, type } = req.query
     const db = getDatabase()
 
     let ordersList = await db.orders.all()
+
+    if (type) {
+      ordersList = ordersList.filter(order => order.type === type)
+    }
 
     if (uuid) {
       ordersList = ordersList.filter(order => order.uuid === uuid)

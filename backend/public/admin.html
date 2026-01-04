@@ -30,9 +30,58 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1800px;
             margin: 30px auto;
             padding: 0 20px;
+        }
+
+        .tabs {
+            background: white;
+            border-radius: 8px 8px 0 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            border-bottom: 2px solid #e1e8ed;
+            overflow: hidden;
+        }
+
+        .tab {
+            padding: 18px 30px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #666;
+            background: white;
+            border: none;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: #667eea;
+            background: #f8f9fa;
+        }
+
+        .tab.active {
+            color: #667eea;
+            background: white;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .search-bar {
@@ -103,6 +152,16 @@
             background: #e8ecf1;
         }
 
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-1px);
+        }
+
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -154,6 +213,7 @@
         .table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .table th,
@@ -161,6 +221,64 @@
             padding: 15px 20px;
             text-align: left;
             border-bottom: 1px solid #e1e8ed;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .table th:nth-child(1),
+        .table td:nth-child(1) {
+            width: 15%;
+        }
+
+        .table th:nth-child(2),
+        .table td:nth-child(2) {
+            width: 11%;
+        }
+
+        .table th:nth-child(3),
+        .table td:nth-child(3) {
+            width: 6%;
+        }
+
+        .table th:nth-child(4),
+        .table td:nth-child(4) {
+            width: 5%;
+        }
+
+        .table th:nth-child(5),
+        .table td:nth-child(5) {
+            width: 5%;
+        }
+
+        .table th:nth-child(6),
+        .table td:nth-child(6) {
+            width: 6%;
+        }
+
+        .table th:nth-child(7),
+        .table td:nth-child(7) {
+            width: 6%;
+        }
+
+        .table th:nth-child(8),
+        .table td:nth-child(8) {
+            width: 7%;
+        }
+
+        .table th:nth-child(9),
+        .table td:nth-child(9) {
+            width: 6%;
+        }
+
+        .table th:nth-child(10),
+        .table td:nth-child(10) {
+            width: 13%;
+        }
+
+        .table th:nth-child(11),
+        .table td:nth-child(11) {
+            width: 20%;
         }
 
         .table th {
@@ -237,6 +355,51 @@
             opacity: 0.3;
         }
 
+        .config-form {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            max-width: 600px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #e1e8ed;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-input[type="number"] {
+            font-family: monospace;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+        }
+
         @media (max-width: 768px) {
             .search-bar {
                 flex-direction: column;
@@ -270,86 +433,202 @@
     </div>
 
     <div class="container">
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-label">总订单数</div>
-                <div class="stat-value" id="totalOrders">0</div>
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('fast')">快充列表</button>
+            <button class="tab" onclick="switchTab('slow')">慢充列表</button>
+            <button class="tab" onclick="switchTab('config')">配置</button>
+        </div>
+
+        <div id="fastTab" class="tab-content active">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">总订单数</div>
+                    <div class="stat-value" id="fastTotalOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">待支付</div>
+                    <div class="stat-value" id="fastPendingOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">已付款</div>
+                    <div class="stat-value" id="fastCompletedOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">充值中</div>
+                    <div class="stat-value" id="fastProcessingOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">已完成</div>
+                    <div class="stat-value" id="fastSuccessOrders">0</div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">待支付</div>
-                <div class="stat-value" id="pendingOrders">0</div>
+
+            <div class="search-bar">
+                <input type="text" class="search-input" id="fastSearchInput" placeholder="搜索订单号或户号...">
+                <select class="filter-select" id="fastStatusFilter">
+                    <option value="">全部状态</option>
+                    <option value="pending">待支付</option>
+                    <option value="completed">已付款</option>
+                    <option value="processing">充值中</option>
+                    <option value="success">已完成</option>
+                    <option value="failed">充值失败</option>
+                </select>
+                <button class="btn btn-primary" onclick="searchOrders('fast')">查询</button>
+                <button class="btn btn-secondary" onclick="resetSearch('fast')">重置</button>
             </div>
-            <div class="stat-card">
-                <div class="stat-label">已付款</div>
-                <div class="stat-value" id="completedOrders">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">充值中</div>
-                <div class="stat-value" id="processingOrders">0</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">已完成</div>
-                <div class="stat-value" id="successOrders">0</div>
+
+            <div class="orders-table">
+                <div class="table-header">
+                    <div class="table-title">快充订单列表</div>
+                </div>
+                <div id="fastOrdersContent">
+                    <div class="loading">加载中...</div>
+                </div>
             </div>
         </div>
 
-        <div class="search-bar">
-            <input type="text" class="search-input" id="searchInput" placeholder="搜索订单号或户号...">
-            <select class="filter-select" id="statusFilter">
-                <option value="">全部状态</option>
-                <option value="pending">待支付</option>
-                <option value="completed">已付款</option>
-                <option value="processing">充值中</option>
-                <option value="success">已完成</option>
-                <option value="failed">充值失败</option>
-            </select>
-            <button class="btn btn-primary" onclick="searchOrders()">查询</button>
-            <button class="btn btn-secondary" onclick="resetSearch()">重置</button>
+        <div id="slowTab" class="tab-content">
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">总订单数</div>
+                    <div class="stat-value" id="slowTotalOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">待支付</div>
+                    <div class="stat-value" id="slowPendingOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">已付款</div>
+                    <div class="stat-value" id="slowCompletedOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">充值中</div>
+                    <div class="stat-value" id="slowProcessingOrders">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">已完成</div>
+                    <div class="stat-value" id="slowSuccessOrders">0</div>
+                </div>
+            </div>
+
+            <div class="search-bar">
+                <input type="text" class="search-input" id="slowSearchInput" placeholder="搜索订单号或户号...">
+                <select class="filter-select" id="slowStatusFilter">
+                    <option value="">全部状态</option>
+                    <option value="pending">待支付</option>
+                    <option value="completed">已付款</option>
+                    <option value="processing">充值中</option>
+                    <option value="success">已完成</option>
+                    <option value="failed">充值失败</option>
+                </select>
+                <button class="btn btn-primary" onclick="searchOrders('slow')">查询</button>
+                <button class="btn btn-secondary" onclick="resetSearch('slow')">重置</button>
+            </div>
+
+            <div class="orders-table">
+                <div class="table-header">
+                    <div class="table-title">慢充订单列表</div>
+                </div>
+                <div id="slowOrdersContent">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
         </div>
 
-        <div class="orders-table">
-            <div class="table-header">
-                <div class="table-title">订单列表</div>
-            </div>
-            <div id="ordersContent">
-                <div class="loading">加载中...</div>
+        <div id="configTab" class="tab-content">
+            <div class="config-form">
+                <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 24px; color: #333;">折扣配置</h2>
+                
+                <div class="form-group">
+                    <label class="form-label">快充折扣</label>
+                    <input type="number" class="form-input" id="fastDiscount" step="0.01" min="0" max="1" placeholder="例如：0.95 表示95折">
+                    <div class="form-hint">输入0-1之间的小数，例如：0.95表示95折</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">慢充折扣</label>
+                    <input type="number" class="form-input" id="slowDiscount" step="0.01" min="0" max="1" placeholder="例如：0.95 表示95折">
+                    <div class="form-hint">输入0-1之间的小数，例如：0.95表示95折</div>
+                </div>
+
+                <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
             </div>
         </div>
     </div>
 
     <script>
-        let allOrders = [];
+        let allOrders = []; 
+        let currentTab = 'fast';
 
-        async function loadOrders() {
+        async function loadOrders(type) {
             try {
-                const response = await fetch('/api/orders');
-                allOrders = await response.json();
-                updateStats();
-                displayOrders(allOrders);
+                const params = new URLSearchParams();
+                if (type) {
+                    params.append('type', type);
+                }
+                const url = `/api/orders${params.toString() ? '?' + params.toString() : ''}`;
+                const response = await fetch(url);
+                const orders = await response.json();
+                return orders;
             } catch (error) {
                 console.error('加载订单失败:', error);
-                document.getElementById('ordersContent').innerHTML = '<div class="empty">加载失败，请刷新页面重试</div>';
+                return [];
             }
         }
 
-        function updateStats() {
-            const stats = {
-                total: allOrders.length,
-                pending: allOrders.filter(o => o.status === 'pending').length,
-                completed: allOrders.filter(o => o.status === 'completed').length,
-                processing: allOrders.filter(o => o.status === 'processing').length,
-                success: allOrders.filter(o => o.status === 'success').length
-            };
-
-            document.getElementById('totalOrders').textContent = stats.total;
-            document.getElementById('pendingOrders').textContent = stats.pending;
-            document.getElementById('completedOrders').textContent = stats.completed;
-            document.getElementById('processingOrders').textContent = stats.processing;
-            document.getElementById('successOrders').textContent = stats.success;
+        async function loadAllOrders() {
+            try {
+                const fastOrders = await loadOrders('fast');
+                const slowOrders = await loadOrders('slow');
+                allOrders = [...fastOrders, ...slowOrders];
+                updateStats('fast');
+                updateStats('slow');
+                displayOrders('fast', fastOrders);
+                displayOrders('slow', slowOrders);
+            } catch (error) {
+                console.error('加载订单失败:', error);
+                document.getElementById('fastOrdersContent').innerHTML = '<div class="empty">加载失败，请刷新页面重试</div>';
+                document.getElementById('slowOrdersContent').innerHTML = '<div class="empty">加载失败，请刷新页面重试</div>';
+            }
         }
 
-        function displayOrders(orders) {
-            const container = document.getElementById('ordersContent');
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            document.getElementById(`${tab}Tab`).classList.add('active');
+
+            if (tab === 'config') {
+                loadConfig();
+            }
+        }
+
+        function updateStats(type) {
+            const orders = type === 'fast' 
+                ? allOrders.filter(o => o.type === 'fast')
+                : allOrders.filter(o => o.type === 'slow');
+
+            const stats = {
+                total: orders.length,
+                pending: orders.filter(o => o.status === 'pending').length,
+                completed: orders.filter(o => o.status === 'completed').length,
+                processing: orders.filter(o => o.status === 'processing').length,
+                success: orders.filter(o => o.status === 'success').length
+            };
+
+            const prefix = type === 'fast' ? 'fast' : 'slow';
+            document.getElementById(`${prefix}TotalOrders`).textContent = stats.total;
+            document.getElementById(`${prefix}PendingOrders`).textContent = stats.pending;
+            document.getElementById(`${prefix}CompletedOrders`).textContent = stats.completed;
+            document.getElementById(`${prefix}ProcessingOrders`).textContent = stats.processing;
+            document.getElementById(`${prefix}SuccessOrders`).textContent = stats.success;
+        }
+
+        function displayOrders(type, orders) {
+            const container = document.getElementById(`${type}OrdersContent`);
 
             if (orders.length === 0) {
                 container.innerHTML = `
@@ -372,6 +651,8 @@
                         <th>类型</th>
                         <th>面额</th>
                         <th>实付</th>
+                        <th>省</th>
+                        <th>市</th>
                         <th>支付方式</th>
                         <th>状态</th>
                         <th>创建时间</th>
@@ -386,6 +667,8 @@
                             <td>${order.typeName}</td>
                             <td>${order.faceAmount}元</td>
                             <td>${order.payAmount}元</td>
+                              <td>${order.province}</td>
+                              <td>${order.city}</td>
                             <td>${getPaymentMethod(order.paymentMethod)}</td>
                             <td><span class="status-badge status-${order.status}">${getStatusText(order.status)}</span></td>
                             <td>${formatTime(order.createTime)}</td>
@@ -433,7 +716,12 @@
 
         function getActionButton(order) {
             if (order.status === 'completed') {
-                return `<button class="btn btn-primary" onclick="completeOrder('${order.orderNumber}')" style="padding: 6px 12px; font-size: 12px;">完成充值</button>`;
+                return `
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-primary" onclick="completeOrder('${order.orderNumber}')" style="padding: 6px 12px; font-size: 12px;">完成充值</button>
+                        <button class="btn btn-danger" onclick="failOrder('${order.orderNumber}')" style="padding: 6px 12px; font-size: 12px;">充值失败</button>
+                    </div>
+                `;
             }
             return '-';
         }
@@ -466,39 +754,151 @@
             }
         }
 
-        function searchOrders() {
-            const keyword = document.getElementById('searchInput').value.trim();
-            const status = document.getElementById('statusFilter').value;
-
-            let filtered = allOrders;
-
-            if (keyword) {
-                filtered = filtered.filter(order =>
-                    order.orderNumber.includes(keyword) ||
-                    order.accountNumber.includes(keyword)
-                );
+        async function failOrder(orderNumber) {
+            const reason = prompt('请输入充值失败原因：');
+            if (reason === null) {
+                return;
             }
 
-            if (status) {
-                filtered = filtered.filter(order => order.status === status);
+            if (!reason.trim()) {
+                alert('请输入失败原因');
+                return;
             }
 
-            displayOrders(filtered);
+            try {
+                const response = await fetch(`/api/orders/${orderNumber}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'failed', failReason: reason })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('已标记为充值失败！');
+                    loadOrders();
+                } else {
+                    alert('操作失败：' + (result.message || '未知错误'));
+                }
+            } catch (error) {
+                console.error('标记失败:', error);
+                alert('操作失败，请稍后重试');
+            }
         }
 
-        function resetSearch() {
-            document.getElementById('searchInput').value = '';
-            document.getElementById('statusFilter').value = '';
-            displayOrders(allOrders);
+        async function searchOrders(type) {
+            const keyword = document.getElementById(`${type}SearchInput`).value.trim();
+            const status = document.getElementById(`${type}StatusFilter`).value;
+
+            const container = document.getElementById(`${type}OrdersContent`);
+            container.innerHTML = '<div class="loading">查询中...</div>';
+
+            try {
+                const params = new URLSearchParams();
+                params.append('type', type);
+                if (keyword) {
+                    params.append('keyword', keyword);
+                }
+                if (status) {
+                    params.append('status', status);
+                }
+
+                const url = `/api/orders?${params.toString()}`;
+                const response = await fetch(url);
+                const orders = await response.json();
+                displayOrders(type, orders);
+            } catch (error) {
+                console.error('查询订单失败:', error);
+                container.innerHTML = '<div class="empty">查询失败，请稍后重试</div>';
+            }
         }
 
-        document.getElementById('searchInput').addEventListener('keyup', function(e) {
+        async function resetSearch(type) {
+            document.getElementById(`${type}SearchInput`).value = '';
+            document.getElementById(`${type}StatusFilter`).value = '';
+
+            const container = document.getElementById(`${type}OrdersContent`);
+            container.innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const params = new URLSearchParams();
+                params.append('type', type);
+                const url = `/api/orders?${params.toString()}`;
+                const response = await fetch(url);
+                const orders = await response.json();
+                displayOrders(type, orders);
+            } catch (error) {
+                console.error('加载订单失败:', error);
+                container.innerHTML = '<div class="empty">加载失败，请刷新页面重试</div>';
+            }
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                if (config) {
+                    document.getElementById('fastDiscount').value = config.fastDiscount || '';
+                    document.getElementById('slowDiscount').value = config.slowDiscount || '';
+                }
+            } catch (error) {
+                console.error('加载配置失败:', error);
+            }
+        }
+
+        async function saveConfig() {
+            const config = {
+                fastDiscount: parseFloat(document.getElementById('fastDiscount').value) || 1,
+                slowDiscount: parseFloat(document.getElementById('slowDiscount').value) || 1
+            };
+
+            if (config.fastDiscount < 0 || config.fastDiscount > 1) {
+                alert('快充折扣必须在0-1之间');
+                return;
+            }
+            if (config.slowDiscount < 0 || config.slowDiscount > 1) {
+                alert('慢充折扣必须在0-1之间');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('配置保存成功！');
+                } else {
+                    alert('保存失败：' + (result.message || '未知错误'));
+                }
+            } catch (error) {
+                console.error('保存配置失败:', error);
+                alert('保存失败，请稍后重试');
+            }
+        }
+
+        document.getElementById('fastSearchInput').addEventListener('keyup', function(e) {
             if (e.key === 'Enter') {
-                searchOrders();
+                searchOrders('fast');
             }
         });
 
-        loadOrders();
+        document.getElementById('slowSearchInput').addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                searchOrders('slow');
+            }
+        });
+
+        loadAllOrders();
     </script>
 </body>
 </html>

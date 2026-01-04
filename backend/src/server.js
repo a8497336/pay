@@ -8,6 +8,7 @@ import orderRoutes from './routes/orders.js'
 import aftersaleRoutes from './routes/aftersales.js'
 import paymentRoutes from './routes/payment.js'
 import wechatRoutes from './routes/wechat.js'
+import configRoutes from './routes/config.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -25,6 +26,7 @@ app.use('/api/orders', orderRoutes)
 app.use('/api/aftersales', aftersaleRoutes)
 app.use('/api/payment', paymentRoutes)
 app.use('/api/wechat', wechatRoutes)
+app.use('/api/config', configRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Payment API is running' })
