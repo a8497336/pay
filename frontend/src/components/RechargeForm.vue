@@ -90,7 +90,7 @@
             @click="selectAmount(amount)"
           >
             <div class="face-value">{{ amount.face }}元</div>
-            <!-- <div class="real-price">售价¥{{ amount.price }}</div> -->
+            <div class="real-price">{{ zkText }}</div>
           </div>
         </div>
       </div>
@@ -119,8 +119,8 @@
       <div class="risk-tips">
         <h3>⚠️ 充值须知</h3>
         <ul>
-          <li>• 慢充0-76小时到账，月初月末可能延迟</li>
-          <li>• 充值后请暂时不要通过官方渠道缴费</li>
+          <li>• 快充0-48小时 慢充0-96小时 月初月末可能延迟</li>
+          <li>• 充值后不要在任何渠道进行缴费（包括官方渠道）</li>
           <!-- <li>• 仅支持居民生活用电，不支持商业用电</li> -->
           <li>• 所有产品售后期7天，超时反馈不予售后</li>
           <li>• 部分渠道订单会有延迟到账的情况，所有产品售后期7天，以订单完成时间起计算，请及时构核实到账情况，超时反馈不予售后!</li>
@@ -142,7 +142,6 @@
 import { ref, computed } from 'vue'
 
 const emit = defineEmits(['submit'])
-
 const currentType = ref('fast')
 const formData = ref({
   province: '',
@@ -152,7 +151,7 @@ const formData = ref({
 const selectedAmount = ref(null)
 const accountTip = ref('')
 const accountTipClass = ref('')
-
+const zk = 0.92;
 const cityData = {
   beijing: ['北京市'],
   shanghai: ['上海市'],
@@ -214,7 +213,7 @@ const config = {
 }
 
 const amounts = computed(() => config[currentType.value].amounts)
-
+const zkText = computed(() => `${zk * 100 } 折`)
 const cities = computed(() => {
   return cityData[formData.value.province] || []
 })
@@ -271,7 +270,7 @@ const handleSubmit = () => {
     typeName: config[currentType.value].name,
     ...formData.value,
     faceAmount: selectedAmount.value.face,
-    payAmount: selectedAmount.value.price
+    payAmount: selectedAmount.value.price * zk
   })
 }
 </script>

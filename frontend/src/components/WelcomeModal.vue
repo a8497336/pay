@@ -8,9 +8,9 @@
       <div class="modal-body">
         <p class="important-tip"><strong>重要提示：</strong>为了保障您的资金安全，请仔细阅读以下条款：</p>
         <ul>
-          <li>✓ 本平台电费充值到账时间为<strong>0-76小时</strong>，请提前充值</li>
+          <li>✓ 本平台电费充值到账时间为<strong>0-96小时</strong>，请提前充值</li>
           <li>✓ 慢充折扣力度大，但请避开月初月末高峰期</li>
-          <li>✓ <strong>禁止</strong>：商业用电、欠费停电户、多户号批量充值</li>
+          <li>✓ <strong>禁止</strong>：欠费停电户、多户号批量充值</li>
           <li>✓ 充值成功后请保存好订单号以便查询</li>
           <li>✓ <strong style="color: #ff6b6b;">警惕诈骗：</strong>平台客服不会主动索要您的验证码或密码</li>
         </ul>
