@@ -80,8 +80,6 @@ const selectPayment = (type) => {
 }
 
 const handleCancel = () => {
-  selectedPayment.value = null
-  agreeTerms.value = false
   emit('update:visible', false)
 }
 

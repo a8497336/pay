@@ -89,8 +89,8 @@
             :class="{ selected: selectedAmount?.face === amount.face }"
             @click="selectAmount(amount)"
           >
-            <div class="face-value">{{ amount.face }}元</div>
-            <div class="real-price">{{ zkText }}</div>
+            <div class="face-value">{{ amount.face  * zk }}元</div>
+            <div class="real-price">{{ amount.face }}元</div>
           </div>
         </div>
       </div>
@@ -234,8 +234,8 @@ const config = {
     name: '电费快充',
     amounts: [
       { face: 100, price: 100 },
-      { face: 300, price: 200 },
-      { face: 0.03, price: 0.03 },
+      { face: 200, price: 200 },
+      { face: 300, price: 300 },
        { face: 400, price: 400 },
       { face: 500, price: 500 },
       { face: 1000, price: 1000 }
