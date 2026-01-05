@@ -8,7 +8,7 @@
     <RechargeForm @submit="handleFormSubmit" />
 
     <div class="bottom-nav">
-      <div class="nav-item" @click="showToast('客服功能开发中')">
+      <div class="nav-item" @click="showCustomerServiceImage">
         <span>客服</span>
       </div>
       <div class="nav-item" @click="goToOrders">
@@ -23,6 +23,13 @@
     <PaymentModal v-model:visible="paymentVisible" :order-data="orderData" @confirm="handlePayment" />
     <QRCodeModal v-model:visible="qrCodeVisible" :qr-code="qrCodeData.qrCode" :order-number="qrCodeData.orderNumber" :pay-amount="qrCodeData.payAmount" @close="handleQRCodeClose" @payment-success="handlePaymentSuccess" />
     <SuccessModal v-model:visible="successVisible" :order="createdOrder" />
+
+    <div class="image-modal" :class="{ show: imageModalVisible }" @click="imageModalVisible = false">
+      <div class="image-modal-content" @click.stop>
+        <div class="image-modal-close" @click="imageModalVisible = false">&times;</div>
+        <img src="/282d9ad12c85bd6735c05209356e814f.jpg" alt="客服" />
+      </div>
+    </div>
 
     <div class="toast" :class="{ show: toastVisible }">{{ toastMessage }}</div>
   </div>
@@ -46,6 +53,7 @@ const welcomeVisible = ref(true)
 const paymentVisible = ref(false)
 const qrCodeVisible = ref(false)
 const successVisible = ref(false)
+const imageModalVisible = ref(false)
 const toastVisible = ref(false)
 const toastMessage = ref('')
 const orderData = ref(null)
@@ -62,6 +70,10 @@ const showToast = (message) => {
   setTimeout(() => {
     toastVisible.value = false
   }, 3000)
+}
+
+const showCustomerServiceImage = () => {
+  imageModalVisible.value = true
 }
 
 const goToOrders = () => {
@@ -273,6 +285,73 @@ const handleWechatJSAPIPayment = (jsapiParams, orderNumber) => {
 
 .toast.show {
   opacity: 1;
+}
+
+.image-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.image-modal.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.image-modal-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  background: white;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.image-modal-content img {
+  max-width: 100%;
+  max-height: 80vh;
+  display: block;
+  border-radius: 8px;
+}
+
+.image-modal-close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  width: 32px;
+  height: 32px;
+  background: #6366f1;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+  transition: all 0.3s ease;
+}
+
+.image-modal-close:hover {
+  background: #8b5cf6;
+  transform: scale(1.1);
+}
+
+.image-modal-close:active {
+  transform: scale(0.95);
 }
 
 @media (max-width: 480px) {
